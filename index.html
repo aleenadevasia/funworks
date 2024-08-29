@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fireworks</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fireworksCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+        let fireworks = [];
+        let particles = [];
+        let running = false; // Initially, fireworks are not running
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const fireworkSound = new Audio('firework_sound.mp3'); // Load the sound file
+
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        // Utility function to get a random color
+        function randomColor() {
+            const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#F3FF33', '#A133FF', '#33FFF1', '#F133FF', '#FFDE33', '#33FFCE', '#FF6B6B', '#FFC300'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        class Firework {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.speed = 3;
+                this.angle = Math.atan2(targetY - y, targetX - x);
+                this.velocityX = Math.cos(this.angle) * this.speed;
+                this.velocityY = Math.sin(this.angle) * this.speed;
+                this.exploded = false;
+                this.color = randomColor(); // Assign a random color to each firework
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                if (Math.hypot(this.targetX - this.x, this.targetY - this.y) < 3) {
+                    this.exploded = true;
+                    fireworkSound.currentTime = 0; // Reset sound to the beginning
+                    fireworkSound.play().catch(error => console.log(error)); // Play the sound
+                    const particleCount = random(50, 200); // Vary the number of particles
+                    for (let i = 0; i < particleCount; i++) {
+                        particles.push(new Particle(this.targetX, this.targetY, this.color));
+                    }
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; // Use the assigned color
+                ctx.fill();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = random(1, 3); // Vary the size of particles
+                this.speed = random(1, 8); // Vary the speed of particles
+                this.angle = random(0, Math.PI * 2);
+                this.velocityX = Math.cos(this.angle) * this.speed;
+                this.velocityY = Math.sin(this.angle) * this.speed;
+                this.alpha = 1;
+                this.decay = random(0.01, 0.05); // Vary the decay rate of particles
+                this.color = color; // Store the color
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.alpha -= this.decay;
+
+                if (this.alpha <= 0) {
+                    this.alpha = 0;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; // Use the stored color
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function animate() {
+            if (running) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                fireworks.forEach((firework, index) => {
+                    firework.update();
+                    firework.draw();
+
+                    if (firework.exploded) {
+                        fireworks.splice(index, 1);
+                    }
+                });
+
+                particles.forEach((particle, index) => {
+                    particle.update();
+                    particle.draw();
+
+                    if (particle.alpha <= 0) {
+                        particles.splice(index, 1);
+                    }
+                });
+
+                if (fireworks.length < 15) { // Increased frequency of fireworks
+                    fireworks.push(new Firework(random(0, canvas.width), canvas.height, random(0, canvas.width), random(0, canvas.height / 2)));
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Toggle fireworks and sound on/off when the canvas is clicked
+        canvas.addEventListener('click', () => {
+            running = !running;
+            if (!running) {
+                fireworkSound.pause(); // Stop sound when fireworks stop
+            }
+        });
+
+        animate();
+    </script>
+</body>
+</html>
